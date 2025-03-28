@@ -176,64 +176,68 @@ public class PossederController {
      * @param newDateDebut         Nouvelle date de début de possession
      * @param newDateFin           Nouvelle date de fin de possession
      */
-    public void updatePossession(int idProprietaire, int idVehicule, String newNomProprietaire, String newPrenomProprietaire, String newMatriculeVehicule, Date newDateDebut, Date newDateFin) {
-        // Vérification si la relation existe déjà
-        String checkExistingQuery = "SELECT COUNT(*) FROM posseder WHERE id_proprietaire = ? AND id_vehicule = ?";
-        // Requête pour mettre à jour les informations du propriétaire
-        String updateProprietaireQuery = "UPDATE proprietaires SET nom = ?, prenom = ? WHERE id_proprietaire = ?";
-         // Requête pour mettre à jour les informations du véhicule
-        String updateVehiculeQuery = "UPDATE vehicules SET matricule = ? WHERE id_vehicule = ?";
-        // Requête pour mettre à jour la relation dans la table POSSEDER
-        String updatePossessionQuery = "UPDATE posseder SET date_debut_propriete = ?, date_fin_propriete = ? " +
-                                       "WHERE id_proprietaire = ? AND id_vehicule = ?";
-    
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            // Vérifier si la relation existe déjà dans la base
-            try (PreparedStatement ps = conn.prepareStatement(checkExistingQuery)) {
-                ps.setInt(1, idProprietaire);
-                ps.setInt(2, idVehicule);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next() && rs.getInt(1) > 0) {
-                    // Si une relation existe déjà, on refuse la mise à jour
-                    JOptionPane.showMessageDialog(null, "Cette relation existe déjà. Impossible de mettre à jour.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                    return; // Stoppe la mise à jour
-                }
-            }
-    
-            // Mise à jour du propriétaire
-            try (PreparedStatement ps = conn.prepareStatement(updateProprietaireQuery)) {
-                ps.setString(1, newNomProprietaire);
-                ps.setString(2, newPrenomProprietaire);
-                ps.setInt(3, idProprietaire);
-                ps.executeUpdate();
-            }
-    
-            // Mise à jour du véhicule
-            try (PreparedStatement ps = conn.prepareStatement(updateVehiculeQuery)) {
-                ps.setString(1, newMatriculeVehicule);
-                ps.setInt(2, idVehicule);
-                ps.executeUpdate();
-            }
-    
-            // Mise à jour de la relation dans la table posseder
-            try (PreparedStatement ps = conn.prepareStatement(updatePossessionQuery)) {
-                ps.setDate(1, newDateDebut);
-                ps.setDate(2, newDateFin); // La date de fin est optionnelle
-                ps.setInt(3, idProprietaire);
-                ps.setInt(4, idVehicule);
-                int rowsUpdated = ps.executeUpdate();
-                if (rowsUpdated > 0) {
-                    JOptionPane.showMessageDialog(null, "Relation mise à jour avec succès !");
-                } else {
-                    JOptionPane.showMessageDialog(null, "Erreur lors de la mise à jour.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-    
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Une erreur s'est produite lors de la mise à jour de la relation. Détails : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
-        }
-    }
+    public void updatePossession(int idProprietaire, int idVehicule, String newNomProprietaire, 
+    String newPrenomProprietaire, String newMatriculeVehicule, 
+    Date newDateDebut, Date newDateFin) {
+
+// Vérifier si la relation existe avant de mettre à jour
+String checkExistingQuery = "SELECT COUNT(*) FROM posseder WHERE id_proprietaire = ? AND id_vehicule = ?";
+String updateProprietaireQuery = "UPDATE proprietaire SET nom = ?, prenom = ? WHERE id_proprietaire = ?";
+String updateVehiculeQuery = "UPDATE vehicule SET matricule = ? WHERE id_vehicule = ?";
+String updatePossessionQuery = "UPDATE posseder SET date_debut_propriete = ?, date_fin_propriete = ? WHERE id_proprietaire = ? AND id_vehicule = ?";
+
+try (Connection conn = DatabaseConnection.getConnection()) {
+conn.setAutoCommit(false); // Démarre une transaction
+
+// Vérifier si la relation existe
+try (PreparedStatement ps = conn.prepareStatement(checkExistingQuery)) {
+ps.setInt(1, idProprietaire);
+ps.setInt(2, idVehicule);
+ResultSet rs = ps.executeQuery();
+if (rs.next() && rs.getInt(1) == 0) {
+JOptionPane.showMessageDialog(null, "Aucune relation trouvée. Impossible de mettre à jour.", "Erreur", JOptionPane.ERROR_MESSAGE);
+return;
+}
+}
+
+// Mise à jour du propriétaire
+try (PreparedStatement ps = conn.prepareStatement(updateProprietaireQuery)) {
+ps.setString(1, newNomProprietaire);
+ps.setString(2, newPrenomProprietaire);
+ps.setInt(3, idProprietaire);
+ps.executeUpdate();
+}
+
+// Mise à jour du véhicule
+try (PreparedStatement ps = conn.prepareStatement(updateVehiculeQuery)) {
+ps.setString(1, newMatriculeVehicule);
+ps.setInt(2, idVehicule);
+ps.executeUpdate();
+}
+
+// Mise à jour de la relation dans la table posseder
+try (PreparedStatement ps = conn.prepareStatement(updatePossessionQuery)) {
+ps.setDate(1, new java.sql.Date(newDateDebut.getTime())); // Conversion
+ps.setDate(2, newDateFin != null ? new java.sql.Date(newDateFin.getTime()) : null);
+ps.setInt(3, idProprietaire);
+ps.setInt(4, idVehicule);
+
+int rowsUpdated = ps.executeUpdate();
+if (rowsUpdated > 0) {
+JOptionPane.showMessageDialog(null, "Relation mise à jour avec succès !");
+} else {
+JOptionPane.showMessageDialog(null, "Erreur lors de la mise à jour.", "Erreur", JOptionPane.ERROR_MESSAGE);
+}
+}
+
+conn.commit(); // Valide la transaction
+
+} catch (SQLException e) {
+e.printStackTrace();
+JOptionPane.showMessageDialog(null, "Erreur lors de la mise à jour : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+}
+}
+
     
 
     /**
